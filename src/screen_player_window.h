@@ -34,6 +34,7 @@ private:
     int contentRowCount() const;
     int contentColumnCount() const;
     void updateWindowButtons();
+    bool isDragArea(const QPoint &localPos) const;
 
     ScreenEntry m_entry;
     QGridLayout *m_grid = nullptr;
@@ -46,4 +47,6 @@ private:
     QRect m_normalGeometry;
     QHash<VideoPlayerWidget *, QPoint> m_positions;
     QVector<VideoPlayerWidget *> m_panels;
+    bool m_dragging = false;
+    QPoint m_dragOffset;
 };

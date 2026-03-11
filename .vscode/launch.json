@@ -23,6 +23,29 @@
       ],
       "console": "integratedTerminal",
       "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Release QtMultiPlayer",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/vs2019-release/Release/QtMultiPlayer.exe",
+      "args": [
+        "-f",
+        "C:/Users/groot/Documents/project/mutilplayer/config_local.json"
+      ],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "QT_MEDIA_BACKEND",
+          "value": "windows"
+        },
+        {
+          "name": "PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\bin;${env:PATH}"
+        }
+      ],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: build release"
     }
   ]
 }

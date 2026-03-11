@@ -35,12 +35,75 @@
       "dependsOn": "CMake: configure"
     },
     {
+      "label": "CMake: configure release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "vs2019-release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "CMake: build release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "--preset",
+        "vs2019-release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "dependsOn": "CMake: configure release"
+    },
+    {
+      "label": "Package Release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "build/vs2019-release",
+        "--config",
+        "Release",
+        "--target",
+        "package_release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "dependsOn": "CMake: build release"
+    },
+    {
       "label": "CTest",
       "type": "shell",
       "command": "ctest",
       "args": [
         "--preset",
         "vs2019-debug",
+        "--output-on-failure"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "CTest Release",
+      "type": "shell",
+      "command": "ctest",
+      "args": [
+        "--preset",
+        "vs2019-release",
         "--output-on-failure"
       ],
       "options": {

@@ -15,6 +15,16 @@
         "CMAKE_PREFIX_PATH": "C:/Qt/6.6.3/msvc2019_64",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/vs2019-debug"
       }
+    },
+    {
+      "name": "vs2019-release",
+      "displayName": "VS2019 Release",
+      "generator": "Visual Studio 16 2019",
+      "binaryDir": "${sourceDir}/build/vs2019-release",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.6.3/msvc2019_64",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/vs2019-release"
+      }
     }
   ],
   "buildPresets": [
@@ -22,6 +32,11 @@
       "name": "vs2019-debug",
       "configurePreset": "vs2019-debug",
       "configuration": "Debug"
+    },
+    {
+      "name": "vs2019-release",
+      "configurePreset": "vs2019-release",
+      "configuration": "Release"
     }
   ],
   "testPresets": [
@@ -29,6 +44,14 @@
       "name": "vs2019-debug",
       "configurePreset": "vs2019-debug",
       "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "vs2019-release",
+      "configurePreset": "vs2019-release",
+      "configuration": "Release",
       "output": {
         "outputOnFailure": true
       }

@@ -4,6 +4,8 @@ project(QtMultiPlayer VERSION 0.1 LANGUAGES CXX)
 
 include(CTest)
 
+option(QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG "Use manual title-bar dragging instead of native HTCAPTION dragging." ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -15,6 +17,11 @@ set(CMAKE_PREFIX_PATH "C:/Qt/6.6.3/msvc2019_64")
 find_package(Qt6 6.6 REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 
 qt_standard_project_setup()
+
+find_program(WINDEPLOYQT_EXECUTABLE
+    NAMES windeployqt windeployqt.exe
+    HINTS "C:/Qt/6.6.3/msvc2019_64/bin"
+)
 
 qt_add_executable(QtMultiPlayer
     src/main.cpp
@@ -38,6 +45,39 @@ target_link_libraries(QtMultiPlayer
 target_compile_definitions(QtMultiPlayer PRIVATE
     QT_DEPRECATED_WARNINGS
 )
+
+if(QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG)
+    target_compile_definitions(QtMultiPlayer PRIVATE QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG=1)
+endif()
+
+install(TARGETS QtMultiPlayer RUNTIME DESTINATION .)
+install(FILES README.md DESTINATION .)
+install(FILES config.json DESTINATION .)
+
+if(WIN32 AND WINDEPLOYQT_EXECUTABLE)
+    install(CODE "
+        execute_process(
+            COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" --release \"\${CMAKE_INSTALL_PREFIX}/QtMultiPlayer.exe\"
+            RESULT_VARIABLE deploy_result
+        )
+        if(NOT deploy_result EQUAL 0)
+            message(FATAL_ERROR \"windeployqt failed with code \${deploy_result}\")
+        endif()
+    ")
+
+    add_custom_target(package_release
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_SOURCE_DIR}/dist/release"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/dist/release"
+        COMMAND ${CMAKE_COMMAND}
+                -DCMAKE_INSTALL_CONFIG_NAME=Release
+                -P "${CMAKE_BINARY_DIR}/cmake_install.cmake"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_INSTALL_PREFIX}"
+                "${CMAKE_SOURCE_DIR}/dist/release"
+        COMMENT "Build deployable release bundle in dist/release"
+        VERBATIM
+    )
+endif()
 
 if(BUILD_TESTING)
     set(QT_RUNTIME_BIN_DIR "C:/Qt/6.6.3/msvc2019_64/bin")

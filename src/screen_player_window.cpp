@@ -231,6 +231,34 @@ bool ScreenPlayerWindow::eventFilter(QObject *watched, QEvent *event)
             toggleFullScreen(nullptr, !isFullScreen());
             return true;
         }
+
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                const QPoint localPos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+                if (isDragArea(localPos)) {
+#ifdef QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG
+                    m_dragging = true;
+                    m_dragOffset = mouseEvent->globalPosition().toPoint() - frameGeometry().topLeft();
+                    return true;
+#endif
+                }
+            }
+        }
+
+        if (event->type() == QEvent::MouseMove && m_dragging) {
+            auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            move(mouseEvent->globalPosition().toPoint() - m_dragOffset);
+            return true;
+        }
+
+        if (event->type() == QEvent::MouseButtonRelease) {
+            auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                m_dragging = false;
+                return true;
+            }
+        }
     }
 
     return QWidget::eventFilter(watched, event);
@@ -252,13 +280,12 @@ bool ScreenPlayerWindow::nativeEvent(const QByteArray &eventType, void *message,
             return true;
         }
 
-        if (m_titleBar && m_titleBar->geometry().contains(pos)) {
-            QWidget *child = childAt(pos);
-            if (child != m_minButton && child != m_fullScreenButton && child != m_closeButton) {
-                *result = HTCAPTION;
-                return true;
-            }
+#ifndef QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG
+        if (isDragArea(pos)) {
+            *result = HTCAPTION;
+            return true;
         }
+#endif
     }
 
     return QWidget::nativeEvent(eventType, message, result);
@@ -290,6 +317,16 @@ int ScreenPlayerWindow::contentColumnCount() const
         maxCol = qMax(maxCol, it.value().y() + 1);
     }
     return maxCol;
+}
+
+bool ScreenPlayerWindow::isDragArea(const QPoint &localPos) const
+{
+    if (!m_titleBar || !m_titleBar->geometry().contains(localPos)) {
+        return false;
+    }
+
+    QWidget *child = childAt(localPos);
+    return child != m_minButton && child != m_fullScreenButton && child != m_closeButton;
 }
 
 void ScreenPlayerWindow::updateWindowButtons()
