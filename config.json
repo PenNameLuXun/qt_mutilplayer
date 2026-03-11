@@ -1,0 +1,26 @@
+{
+  "hwaccel": "d3d11va",
+  "screens": {
+    "0": {
+      "cols": 2,
+      "video": [
+        {
+          "path": "demo1.mp4",
+          "play_sections": [
+            {
+              "start_time": 1,
+              "duration": 4
+            },
+            {
+              "start_time": 6,
+              "duration": -1
+            }
+          ]
+        },
+        {
+          "path": "demo2.mp4"
+        }
+      ]
+    }
+  }
+}

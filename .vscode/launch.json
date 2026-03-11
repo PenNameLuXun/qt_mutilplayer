@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug QtMultiPlayer",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [
+        "-f",
+        "C:/Users/groot/Documents/project/mutilplayer/config_local.json"
+      ],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "QT_MEDIA_BACKEND",
+          "value": "windows"
+        },
+        {
+          "name": "PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\bin;${env:PATH}"
+        }
+      ],
+      "console": "integratedTerminal",
+      "preLaunchTask": "CMake: build"
+    }
+  ]
+}

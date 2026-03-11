@@ -1,0 +1,40 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  "cmake.buildBeforeRun": true,
+  "cmake.preferredGenerators": [
+    "Visual Studio 16 2019"
+  ],
+  "cmake.debugConfig": {
+    "args": [
+      "-f",
+      "C:/Users/groot/Documents/project/mutilplayer/config_local.json"
+    ],
+    "cwd": "${workspaceFolder}",
+    "environment": [
+      {
+        "name": "QT_MEDIA_BACKEND",
+        "value": "windows"
+      },
+      {
+        "name": "PATH",
+        "value": "C:\\Qt\\6.6.3\\msvc2019_64\\bin;${env:PATH}"
+      },
+      {
+        "name": "QT_PLUGIN_PATH",
+        "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins"
+      },
+      {
+        "name": "QT_QPA_PLATFORM_PLUGIN_PATH",
+        "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins\\platforms"
+      }
+    ],
+    "console": "integratedTerminal"
+  },
+  "cmake.ctestArgs": [
+    "--output-on-failure"
+  ],
+  "files.associations": {
+    "*.tpp": "cpp"
+  }
+}
