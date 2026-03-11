@@ -24,9 +24,12 @@ VideoPlayerWidget::VideoPlayerWidget(const VideoEntry &entry, QWidget *parent)
 {
     setupUi();
 
+    m_audioOutput = new QAudioOutput(this);
+    m_audioOutput->setVolume(0.0f);
+
     m_player = new QMediaPlayer(this);
+    m_player->setAudioOutput(m_audioOutput);
     m_player->setVideoOutput(m_videoWidget);
-    m_player->setActiveAudioTrack(-1);
 
     connect(m_player, &QMediaPlayer::durationChanged, this, &VideoPlayerWidget::onDurationChanged);
     connect(m_player, &QMediaPlayer::positionChanged, this, &VideoPlayerWidget::onPositionChanged);
@@ -64,7 +67,11 @@ void VideoPlayerWidget::setFullScreenActive(bool active)
 
 bool VideoPlayerWidget::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == m_videoWidget || watched == m_controls) {
+    if (watched == m_videoWidget
+        || watched == m_controls
+        || watched == m_volumePopup
+        || watched == m_volumeSlider
+        || watched == m_volumeButton) {
         if (event->type() == QEvent::Enter || event->type() == QEvent::MouseMove) {
             setControlsVisible(true);
         } else if (event->type() == QEvent::Leave) {
@@ -122,6 +129,14 @@ void VideoPlayerWidget::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
     }
 }
 
+void VideoPlayerWidget::onVolumeChanged(int value)
+{
+    if (m_audioOutput) {
+        m_audioOutput->setVolume(static_cast<float>(value) / 100.0f);
+    }
+    updateUi();
+}
+
 void VideoPlayerWidget::togglePlayPause()
 {
     if (m_player->playbackState() == QMediaPlayer::PlayingState) {
@@ -161,6 +176,23 @@ void VideoPlayerWidget::toggleFullScreen()
     emit requestToggleFullScreen(this, !m_fullScreenActive);
 }
 
+void VideoPlayerWidget::toggleVolumePopup()
+{
+    if (!m_volumePopup) {
+        return;
+    }
+
+    const bool shouldShow = !m_volumePopup->isVisible();
+    if (shouldShow) {
+        updateVolumePopupGeometry();
+        m_volumePopup->show();
+        m_volumePopup->raise();
+        setControlsVisible(true);
+    } else {
+        m_volumePopup->hide();
+    }
+}
+
 void VideoPlayerWidget::refreshControlsVisibility()
 {
     setControlsVisible(shouldKeepControlsVisible());
@@ -173,6 +205,7 @@ void VideoPlayerWidget::setupUi()
     setStyleSheet(QStringLiteral(
         "#videoPlayerRoot { background: #111111; }"
         "QWidget#controls { background: rgba(25, 25, 25, 180); border-radius: 8px; }"
+        "QWidget#volumePopup { background: rgba(25, 25, 25, 220); border-radius: 8px; }"
         "QPushButton, QLabel { color: white; font-family: 'Microsoft YaHei'; }"
         "QPushButton { background: transparent; border: none; padding: 4px 8px; }"
         "QPushButton:hover { color: #dddddd; }"
@@ -202,6 +235,8 @@ void VideoPlayerWidget::setupUi()
     m_currentLabel = new QLabel(QStringLiteral("00:00"), m_controls);
     m_slider = new ClickableSlider(Qt::Horizontal, m_controls);
     m_totalLabel = new QLabel(QStringLiteral("00:00"), m_controls);
+    m_volumeButton = new QPushButton(QStringLiteral("Vol"), m_controls);
+    m_volumeButton->installEventFilter(this);
     m_fullWindowButton = new QPushButton(QStringLiteral("Window"), m_controls);
     m_fullScreenButton = new QPushButton(QStringLiteral("Screen"), m_controls);
 
@@ -209,13 +244,34 @@ void VideoPlayerWidget::setupUi()
     controlsLayout->addWidget(m_currentLabel);
     controlsLayout->addWidget(m_slider, 1);
     controlsLayout->addWidget(m_totalLabel);
+    controlsLayout->addWidget(m_volumeButton);
     controlsLayout->addWidget(m_fullWindowButton);
     controlsLayout->addWidget(m_fullScreenButton);
+
+    m_volumePopup = new QWidget(window(), Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_volumePopup->setObjectName(QStringLiteral("volumePopup"));
+    m_volumePopup->setAttribute(Qt::WA_ShowWithoutActivating, true);
+    m_volumePopup->setMouseTracking(true);
+    m_volumePopup->installEventFilter(this);
+    auto *volumeLayout = new QVBoxLayout(m_volumePopup);
+    volumeLayout->setContentsMargins(10, 10, 10, 10);
+    volumeLayout->setSpacing(8);
+    auto *volumeLabel = new QLabel(QStringLiteral("Volume"), m_volumePopup);
+    m_volumeSlider = new ClickableSlider(Qt::Vertical, m_volumePopup);
+    m_volumeSlider->installEventFilter(this);
+    m_volumeSlider->setRange(0, 100);
+    m_volumeSlider->setValue(0);
+    m_volumeSlider->setFixedHeight(96);
+    volumeLayout->addWidget(volumeLabel, 0, Qt::AlignHCenter);
+    volumeLayout->addWidget(m_volumeSlider, 0, Qt::AlignHCenter);
+    m_volumePopup->hide();
 
     connect(m_playButton, &QPushButton::clicked, this, &VideoPlayerWidget::togglePlayPause);
     connect(m_slider, &QSlider::sliderPressed, this, &VideoPlayerWidget::sliderPressed);
     connect(m_slider, &QSlider::sliderReleased, this, &VideoPlayerWidget::sliderReleased);
     connect(m_slider, &QSlider::sliderMoved, this, &VideoPlayerWidget::sliderMoved);
+    connect(m_volumeButton, &QPushButton::clicked, this, &VideoPlayerWidget::toggleVolumePopup);
+    connect(m_volumeSlider, &QSlider::valueChanged, this, &VideoPlayerWidget::onVolumeChanged);
     connect(m_fullWindowButton, &QPushButton::clicked, this, &VideoPlayerWidget::toggleFullWindow);
     connect(m_fullScreenButton, &QPushButton::clicked, this, &VideoPlayerWidget::toggleFullScreen);
 
@@ -234,6 +290,8 @@ void VideoPlayerWidget::updateUi()
 {
     const bool playing = m_player && m_player->playbackState() == QMediaPlayer::PlayingState;
     m_playButton->setText(playing ? QStringLiteral("Pause") : QStringLiteral("Play"));
+    const int volumePercent = m_audioOutput ? qRound(m_audioOutput->volume() * 100.0f) : 0;
+    m_volumeButton->setText(volumePercent == 0 ? QStringLiteral("Mute") : QStringLiteral("Vol %1").arg(volumePercent));
     m_fullWindowButton->setText(m_fullWindowActive ? QStringLiteral("Restore") : QStringLiteral("Window"));
     m_fullScreenButton->setText(m_fullScreenActive ? QStringLiteral("Exit FS") : QStringLiteral("Screen"));
 }
@@ -251,6 +309,23 @@ void VideoPlayerWidget::updateControlsGeometry()
     const QPoint topLeft = m_videoWidget->mapToGlobal(QPoint(margin, controlsY));
     m_controls->setGeometry(topLeft.x(), topLeft.y(), controlsWidth, controlsHeight);
     m_controls->raise();
+    updateVolumePopupGeometry();
+}
+
+void VideoPlayerWidget::updateVolumePopupGeometry()
+{
+    if (!m_volumePopup || !m_volumeButton || !m_controls) {
+        return;
+    }
+
+    const QPoint buttonTopLeft = m_volumeButton->mapToGlobal(QPoint(0, 0));
+    const QSize popupSize(72, 140);
+    const int x = buttonTopLeft.x() + (m_volumeButton->width() - popupSize.width()) / 2;
+    const int y = buttonTopLeft.y() - popupSize.height() - 8;
+    m_volumePopup->setGeometry(x, y, popupSize.width(), popupSize.height());
+    if (m_volumePopup->isVisible()) {
+        m_volumePopup->raise();
+    }
 }
 
 void VideoPlayerWidget::setControlsVisible(bool visible)
@@ -267,6 +342,9 @@ void VideoPlayerWidget::setControlsVisible(bool visible)
         m_controls->raise();
     } else if (m_controlsGuardTimer) {
         m_controlsGuardTimer->stop();
+        if (m_volumePopup) {
+            m_volumePopup->hide();
+        }
     }
 }
 
@@ -274,7 +352,8 @@ bool VideoPlayerWidget::shouldKeepControlsVisible() const
 {
     const QPoint globalPos = QCursor::pos();
     return m_videoWidget->rect().contains(m_videoWidget->mapFromGlobal(globalPos))
-        || m_controls->rect().contains(m_controls->mapFromGlobal(globalPos));
+        || m_controls->rect().contains(m_controls->mapFromGlobal(globalPos))
+        || (m_volumePopup && m_volumePopup->isVisible() && m_volumePopup->rect().contains(m_volumePopup->mapFromGlobal(globalPos)));
 }
 
 void VideoPlayerWidget::seekTo(qint64 positionMs)

@@ -2,6 +2,7 @@
 
 #include "app_config.h"
 
+#include <QAudioOutput>
 #include <QMediaPlayer>
 #include <QWidget>
 
@@ -33,18 +34,21 @@ private slots:
     void onDurationChanged(qint64 duration);
     void onPositionChanged(qint64 position);
     void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
+    void onVolumeChanged(int value);
     void togglePlayPause();
     void sliderPressed();
     void sliderReleased();
     void sliderMoved(int value);
     void toggleFullWindow();
     void toggleFullScreen();
+    void toggleVolumePopup();
     void refreshControlsVisibility();
 
 private:
     void setupUi();
     void updateUi();
     void updateControlsGeometry();
+    void updateVolumePopupGeometry();
     void setControlsVisible(bool visible);
     bool shouldKeepControlsVisible() const;
     void seekTo(qint64 positionMs);
@@ -56,13 +60,17 @@ private:
     VideoEntry m_entry;
     QVideoWidget *m_videoWidget = nullptr;
     QWidget *m_controls = nullptr;
+    QAudioOutput *m_audioOutput = nullptr;
     QMediaPlayer *m_player = nullptr;
     QPushButton *m_playButton = nullptr;
+    QPushButton *m_volumeButton = nullptr;
     QPushButton *m_fullWindowButton = nullptr;
     QPushButton *m_fullScreenButton = nullptr;
     QLabel *m_currentLabel = nullptr;
     QLabel *m_totalLabel = nullptr;
     ClickableSlider *m_slider = nullptr;
+    QWidget *m_volumePopup = nullptr;
+    ClickableSlider *m_volumeSlider = nullptr;
     QTimer *m_controlsGuardTimer = nullptr;
     bool m_sliderDragging = false;
     bool m_ignoreSectionCheck = false;
