@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/icons/app.svg</file>
+        <file>assets/icons/title_min.svg</file>
+        <file>assets/icons/title_close.svg</file>
+        <file>assets/icons/title_fullscreen.svg</file>
+        <file>assets/icons/title_restore.svg</file>
+        <file>assets/icons/player_play.svg</file>
+        <file>assets/icons/player_pause.svg</file>
+        <file>assets/icons/player_window.svg</file>
+        <file>assets/icons/player_window_restore.svg</file>
+        <file>assets/icons/player_screen.svg</file>
+        <file>assets/icons/player_screen_restore.svg</file>
+        <file>assets/icons/player_volume.svg</file>
+        <file>assets/icons/player_mute.svg</file>
+    </qresource>
+</RCC>
