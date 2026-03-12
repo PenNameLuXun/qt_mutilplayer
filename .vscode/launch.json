@@ -5,7 +5,7 @@
       "name": "Debug QtMultiPlayer",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${command:cmake.launchTargetPath}",
+      "program": "${workspaceFolder}/build/vs2019-debug/Debug/QtMultiPlayer.exe",
       "args": [
         "-f",
         "C:/Users/groot/Documents/project/mutilplayer/config_local.json"
@@ -19,6 +19,14 @@
         {
           "name": "PATH",
           "value": "C:\\Qt\\6.6.3\\msvc2019_64\\bin;${env:PATH}"
+        },
+        {
+          "name": "QT_PLUGIN_PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins"
+        },
+        {
+          "name": "QT_QPA_PLATFORM_PLUGIN_PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins\\platforms"
         }
       ],
       "console": "integratedTerminal",
@@ -42,6 +50,14 @@
         {
           "name": "PATH",
           "value": "C:\\Qt\\6.6.3\\msvc2019_64\\bin;${env:PATH}"
+        },
+        {
+          "name": "QT_PLUGIN_PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins"
+        },
+        {
+          "name": "QT_QPA_PLATFORM_PLUGIN_PATH",
+          "value": "C:\\Qt\\6.6.3\\msvc2019_64\\plugins\\platforms"
         }
       ],
       "console": "integratedTerminal",

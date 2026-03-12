@@ -9,6 +9,7 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QCursor>
+#include <QIcon>
 #include <QResizeEvent>
 #include <QTimer>
 #include <QUrl>
@@ -17,6 +18,13 @@
 namespace
 {
 constexpr qint64 kSectionToleranceMs = 150;
+constexpr int kControlIconSize = 16;
+constexpr int kControlButtonPadding = 6;
+
+QIcon iconForPath(const char *path)
+{
+    return QIcon(QString::fromLatin1(path));
+}
 }
 
 VideoPlayerWidget::VideoPlayerWidget(const VideoEntry &entry, QWidget *parent)
@@ -208,6 +216,12 @@ void VideoPlayerWidget::setupUi()
         "QWidget#volumePopup { background: rgba(25, 25, 25, 220); border-radius: 8px; }"
         "QPushButton, QLabel { color: white; font-family: 'Microsoft YaHei'; }"
         "QPushButton { background: transparent; border: none; padding: 4px 8px; }"
+        "QPushButton#playButton, QPushButton#volumeButton, QPushButton#fullWindowButton, QPushButton#fullScreenButton {"
+        "  padding: 0; border-radius: 4px; background: rgba(255,255,255,0.03);"
+        "}"
+        "QPushButton#playButton:hover, QPushButton#volumeButton:hover, QPushButton#fullWindowButton:hover, QPushButton#fullScreenButton:hover {"
+        "  background: rgba(255,255,255,0.16);"
+        "}"
         "QPushButton:hover { color: #dddddd; }"
         "QSlider::groove:horizontal { height: 4px; background: rgba(255,255,255,70); }"
         "QSlider::sub-page:horizontal { background: white; }"
@@ -228,17 +242,38 @@ void VideoPlayerWidget::setupUi()
     m_controls->installEventFilter(this);
     m_controls->setAttribute(Qt::WA_ShowWithoutActivating, true);
     auto *controlsLayout = new QHBoxLayout(m_controls);
-    controlsLayout->setContentsMargins(12, 6, 12, 6);
+    //controlsLayout->setContentsMargins(12, 6, 12, 6);
+    controlsLayout->setContentsMargins(3,0,0,3);
     controlsLayout->setSpacing(8);
 
-    m_playButton = new QPushButton(QStringLiteral("Pause"), m_controls);
+    m_playButton = new QPushButton(m_controls);
+    m_playButton->setObjectName(QStringLiteral("playButton"));
+    m_playButton->setToolTip(QStringLiteral("Play/Pause"));
+    m_playButton->setIconSize(QSize(kControlIconSize, kControlIconSize));
     m_currentLabel = new QLabel(QStringLiteral("00:00"), m_controls);
     m_slider = new ClickableSlider(Qt::Horizontal, m_controls);
     m_totalLabel = new QLabel(QStringLiteral("00:00"), m_controls);
-    m_volumeButton = new QPushButton(QStringLiteral("Vol"), m_controls);
+    m_volumeButton = new QPushButton(m_controls);
+    m_volumeButton->setObjectName(QStringLiteral("volumeButton"));
+    m_volumeButton->setToolTip(QStringLiteral("Volume"));
+    m_volumeButton->setIconSize(QSize(kControlIconSize, kControlIconSize));
     m_volumeButton->installEventFilter(this);
-    m_fullWindowButton = new QPushButton(QStringLiteral("Window"), m_controls);
-    m_fullScreenButton = new QPushButton(QStringLiteral("Screen"), m_controls);
+    m_fullWindowButton = new QPushButton(m_controls);
+    m_fullWindowButton->setObjectName(QStringLiteral("fullWindowButton"));
+    m_fullWindowButton->setToolTip(QStringLiteral("Toggle Full Window"));
+    m_fullWindowButton->setIconSize(QSize(kControlIconSize, kControlIconSize));
+    m_fullScreenButton = new QPushButton(m_controls);
+    m_fullScreenButton->setObjectName(QStringLiteral("fullScreenButton"));
+    m_fullScreenButton->setToolTip(QStringLiteral("Toggle Full Screen"));
+    m_fullScreenButton->setIconSize(QSize(kControlIconSize, kControlIconSize));
+
+    const QSize iconButtonSize(
+        kControlIconSize + kControlButtonPadding * 2,
+        kControlIconSize + kControlButtonPadding * 2);
+    m_playButton->setFixedSize(iconButtonSize);
+    m_volumeButton->setFixedSize(iconButtonSize);
+    m_fullWindowButton->setFixedSize(iconButtonSize);
+    m_fullScreenButton->setFixedSize(iconButtonSize);
 
     controlsLayout->addWidget(m_playButton);
     controlsLayout->addWidget(m_currentLabel);
@@ -289,11 +324,26 @@ void VideoPlayerWidget::setupUi()
 void VideoPlayerWidget::updateUi()
 {
     const bool playing = m_player && m_player->playbackState() == QMediaPlayer::PlayingState;
-    m_playButton->setText(playing ? QStringLiteral("Pause") : QStringLiteral("Play"));
+    m_playButton->setText(QString());
+    m_playButton->setIcon(playing
+        ? iconForPath(":/assets/icons/player_pause.svg")
+        : iconForPath(":/assets/icons/player_play.svg"));
     const int volumePercent = m_audioOutput ? qRound(m_audioOutput->volume() * 100.0f) : 0;
-    m_volumeButton->setText(volumePercent == 0 ? QStringLiteral("Mute") : QStringLiteral("Vol %1").arg(volumePercent));
-    m_fullWindowButton->setText(m_fullWindowActive ? QStringLiteral("Restore") : QStringLiteral("Window"));
-    m_fullScreenButton->setText(m_fullScreenActive ? QStringLiteral("Exit FS") : QStringLiteral("Screen"));
+    m_volumeButton->setText(QString());
+    m_volumeButton->setIcon(volumePercent == 0
+        ? iconForPath(":/assets/icons/player_mute.svg")
+        : iconForPath(":/assets/icons/player_volume.svg"));
+    m_volumeButton->setToolTip(volumePercent == 0
+        ? QStringLiteral("Muted")
+        : QStringLiteral("Volume %1%").arg(volumePercent));
+    m_fullWindowButton->setText(QString());
+    m_fullWindowButton->setIcon(m_fullWindowActive
+        ? iconForPath(":/assets/icons/player_window_restore.svg")
+        : iconForPath(":/assets/icons/player_window.svg"));
+    m_fullScreenButton->setText(QString());
+    m_fullScreenButton->setIcon(m_fullScreenActive
+        ? iconForPath(":/assets/icons/player_screen_restore.svg")
+        : iconForPath(":/assets/icons/player_screen.svg"));
 }
 
 void VideoPlayerWidget::updateControlsGeometry()

@@ -6,6 +6,7 @@
 #include <QCommandLineParser>
 #include <QByteArray>
 #include <QFileInfo>
+#include <QIcon>
 #include <QMessageBox>
 #include <QScreen>
 #include <QTimer>
@@ -18,6 +19,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("QtMultiPlayer"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app.svg")));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("Qt Widgets multi-screen video player"));
@@ -64,6 +66,7 @@ int main(int argc, char *argv[])
     const QList<QScreen *> screens = QGuiApplication::screens();
     QVector<ScreenPlayerWindow *> windows;
     windows.reserve(config.screens.size());
+    int remainingWindows = 0;
 
     for (const ScreenEntry &entry : std::as_const(config.screens)) {
         if (entry.screenIndex < 0 || entry.screenIndex >= screens.size()) {
@@ -71,9 +74,16 @@ int main(int argc, char *argv[])
         }
 
         auto *window = new ScreenPlayerWindow(entry);
+        QObject::connect(window, &ScreenPlayerWindow::closedByUser, &app, [&app, &remainingWindows]() {
+            --remainingWindows;
+            if (remainingWindows <= 0) {
+                app.quit();
+            }
+        });
         window->placeOnScreen(screens.at(entry.screenIndex)->geometry());
         window->show();
         windows.push_back(window);
+        ++remainingWindows;
     }
 
     if (windows.isEmpty()) {

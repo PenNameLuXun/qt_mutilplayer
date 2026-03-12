@@ -4,11 +4,14 @@
 
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
+#include <QCloseEvent>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QCursor>
 #include <QScreen>
+#include <QSize>
 #include <QtMath>
 #include <windows.h>
 
@@ -62,11 +65,20 @@ bool isInResizeBorder(const QPoint &pos, int width, int height, LONG *hitTest)
 }
 }
 
+namespace
+{
+QIcon iconForPath(const char *path)
+{
+    return QIcon(QString::fromLatin1(path));
+}
+}
+
 ScreenPlayerWindow::ScreenPlayerWindow(const ScreenEntry &entry, QWidget *parent)
     : QWidget(parent), m_entry(entry)
 {
     setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
     setWindowTitle(QStringLiteral("Qt Multi Player - Screen %1").arg(entry.screenIndex));
+    setWindowIcon(iconForPath(":/assets/icons/app.svg"));
     setMinimumSize(960, 540);
 
     auto *rootLayout = new QGridLayout(this);
@@ -81,11 +93,22 @@ ScreenPlayerWindow::ScreenPlayerWindow(const ScreenEntry &entry, QWidget *parent
     titleLayout->setSpacing(6);
 
     m_titleLabel = new QLabel(windowTitle(), m_titleBar);
-    m_minButton = new QPushButton(QStringLiteral("-"), m_titleBar);
-    m_fullScreenButton = new QPushButton(QStringLiteral("Full Screen"), m_titleBar);
-    m_closeButton = new QPushButton(QStringLiteral("X"), m_titleBar);
+    m_minButton = new QPushButton(m_titleBar);
+    m_fullScreenButton = new QPushButton(m_titleBar);
+    m_closeButton = new QPushButton(m_titleBar);
+    m_minButton->setObjectName(QStringLiteral("titleMinButton"));
+    m_fullScreenButton->setObjectName(QStringLiteral("titleFullscreenButton"));
+    m_closeButton->setObjectName(QStringLiteral("titleCloseButton"));
+    m_minButton->setToolTip(QStringLiteral("Minimize"));
+    m_fullScreenButton->setToolTip(QStringLiteral("Toggle Fullscreen"));
+    m_closeButton->setToolTip(QStringLiteral("Close"));
+    m_minButton->setIcon(iconForPath(":/assets/icons/title_min.svg"));
+    m_closeButton->setIcon(iconForPath(":/assets/icons/title_close.svg"));
+    m_minButton->setIconSize(QSize(14, 14));
+    m_fullScreenButton->setIconSize(QSize(14, 14));
+    m_closeButton->setIconSize(QSize(14, 14));
     m_minButton->setFixedSize(28, kTitleButtonHeight);
-    m_fullScreenButton->setFixedHeight(kTitleButtonHeight);
+    m_fullScreenButton->setFixedSize(34, kTitleButtonHeight);
     m_closeButton->setFixedSize(28, kTitleButtonHeight);
 
     connect(m_minButton, &QPushButton::clicked, this, &QWidget::showMinimized);
@@ -120,7 +143,15 @@ ScreenPlayerWindow::ScreenPlayerWindow(const ScreenEntry &entry, QWidget *parent
     setStyleSheet(QStringLiteral(
         "ScreenPlayerWindow, QWidget { background: #1b1b1b; color: white; font-family: 'Microsoft YaHei'; }"
         "QPushButton { min-width: 28px; padding: 2px 8px; }"
+        "QPushButton#titleMinButton, QPushButton#titleFullscreenButton, QPushButton#titleCloseButton {"
+        "  min-width: 0px; border-radius: 4px; padding: 0; background: rgba(255,255,255,0.02);"
+        "}"
+        "QPushButton#titleMinButton:hover, QPushButton#titleFullscreenButton:hover, QPushButton#titleCloseButton:hover {"
+        "  background: rgba(255,255,255,0.14);"
+        "}"
         "QLabel { font-size: 12px; }"));
+
+    updateWindowButtons();
 }
 
 void ScreenPlayerWindow::placeOnScreen(const QRect &screenGeometry)
@@ -220,8 +251,17 @@ void ScreenPlayerWindow::toggleFullScreen(VideoPlayerWidget *panel, bool enabled
 
 void ScreenPlayerWindow::closeWindow()
 {
-    stop();
     close();
+}
+
+void ScreenPlayerWindow::closeEvent(QCloseEvent *event)
+{
+    stop();
+    if (!m_closeNotified) {
+        m_closeNotified = true;
+        emit closedByUser();
+    }
+    QWidget::closeEvent(event);
 }
 
 bool ScreenPlayerWindow::eventFilter(QObject *watched, QEvent *event)
@@ -331,5 +371,8 @@ bool ScreenPlayerWindow::isDragArea(const QPoint &localPos) const
 
 void ScreenPlayerWindow::updateWindowButtons()
 {
-    m_fullScreenButton->setText(isFullScreen() ? QStringLiteral("Restore") : QStringLiteral("Full Screen"));
+    m_fullScreenButton->setText(QString());
+    m_fullScreenButton->setIcon(isFullScreen()
+        ? iconForPath(":/assets/icons/title_restore.svg")
+        : iconForPath(":/assets/icons/title_fullscreen.svg"));
 }

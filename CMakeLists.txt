@@ -33,6 +33,13 @@ qt_add_executable(QtMultiPlayer
     src/screen_player_window.h
     src/video_player_widget.cpp
     src/video_player_widget.h
+    resources.qrc
+    app.rc
+)
+
+# Keep console for Debug, hide console window for non-Debug builds on Windows.
+set_target_properties(QtMultiPlayer PROPERTIES
+    WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>>"
 )
 
 target_link_libraries(QtMultiPlayer

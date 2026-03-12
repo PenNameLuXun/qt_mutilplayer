@@ -20,9 +20,13 @@ public:
     void placeOnScreen(const QRect &screenGeometry);
     void stop();
 
+signals:
+    void closedByUser();
+
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void toggleFullWindow(VideoPlayerWidget *panel, bool enabled);
@@ -49,4 +53,5 @@ private:
     QVector<VideoPlayerWidget *> m_panels;
     bool m_dragging = false;
     QPoint m_dragOffset;
+    bool m_closeNotified = false;
 };
