@@ -37,6 +37,7 @@ private:
     int computeColumnCount() const;
     int contentRowCount() const;
     int contentColumnCount() const;
+    void hideTitleBarInFullscreen();
     void updateWindowButtons();
     bool isDragArea(const QPoint &localPos) const;
 

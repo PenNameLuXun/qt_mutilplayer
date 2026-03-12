@@ -4,7 +4,7 @@ project(QtMultiPlayer VERSION 0.1 LANGUAGES CXX)
 
 include(CTest)
 
-option(QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG "Use manual title-bar dragging instead of native HTCAPTION dragging." ON)
+option(QT_MULTIPLAYER_SMOOTH_WINDOW_DRAG "Use manual title-bar dragging instead of native HTCAPTION dragging." OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -80,6 +80,7 @@ ScreenPlayerWindow::ScreenPlayerWindow(const ScreenEntry &entry, QWidget *parent
     setWindowTitle(QStringLiteral("Qt Multi Player - Screen %1").arg(entry.screenIndex));
     setWindowIcon(iconForPath(":/assets/icons/app.svg"));
     setMinimumSize(960, 540);
+    setMouseTracking(true);
 
     auto *rootLayout = new QGridLayout(this);
     rootLayout->setContentsMargins(6, 6, 6, 6);
@@ -233,12 +234,16 @@ void ScreenPlayerWindow::toggleFullScreen(VideoPlayerWidget *panel, bool enabled
         if (!isFullScreen()) {
             m_normalGeometry = geometry();
             showFullScreen();
+            hideTitleBarInFullscreen();
         }
     } else {
         if (isFullScreen()) {
             showNormal();
             if (m_normalGeometry.isValid()) {
                 setGeometry(m_normalGeometry);
+            }
+            if (m_titleBar) {
+                m_titleBar->show();
             }
         }
     }
@@ -357,6 +362,13 @@ int ScreenPlayerWindow::contentColumnCount() const
         maxCol = qMax(maxCol, it.value().y() + 1);
     }
     return maxCol;
+}
+
+void ScreenPlayerWindow::hideTitleBarInFullscreen()
+{
+    if (isFullScreen() && m_titleBar) {
+        m_titleBar->hide();
+    }
 }
 
 bool ScreenPlayerWindow::isDragArea(const QPoint &localPos) const
