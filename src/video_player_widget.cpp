@@ -11,6 +11,7 @@
 #include <QCursor>
 #include <QIcon>
 #include <QResizeEvent>
+#include <QStyle>
 #include <QTimer>
 #include <QUrl>
 #include <QtMultimediaWidgets/QVideoWidget>
@@ -42,6 +43,7 @@ VideoPlayerWidget::VideoPlayerWidget(const VideoEntry &entry, QWidget *parent)
     connect(m_player, &QMediaPlayer::durationChanged, this, &VideoPlayerWidget::onDurationChanged);
     connect(m_player, &QMediaPlayer::positionChanged, this, &VideoPlayerWidget::onPositionChanged);
     connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &VideoPlayerWidget::onMediaStatusChanged);
+    connect(m_player, &QMediaPlayer::errorOccurred, this, &VideoPlayerWidget::onPlayerError);
 
     const QFileInfo info(entry.path);
     m_player->setSource(QUrl::fromLocalFile(info.absoluteFilePath()));
@@ -73,8 +75,102 @@ void VideoPlayerWidget::setFullScreenActive(bool active)
     updateUi();
 }
 
+void VideoPlayerWidget::setLayoutEditMode(bool active)
+{
+    m_layoutEditMode = active;
+    setProperty("layoutEdit", active);
+    style()->unpolish(this);
+    style()->polish(this);
+    setCursor(active ? Qt::OpenHandCursor : Qt::ArrowCursor);
+    if (!active) {
+        setLayoutDragActive(false);
+        setDropTargetActive(false);
+    }
+    setControlsVisible(false);
+}
+
+void VideoPlayerWidget::setLayoutDragActive(bool active)
+{
+    m_layoutDragActive = active;
+    setProperty("layoutDragging", active);
+    style()->unpolish(this);
+    style()->polish(this);
+    if (m_layoutBadge) {
+        if (active) {
+            const QString name = QFileInfo(m_entry.path).fileName();
+            m_layoutBadge->setText(name.isEmpty()
+                ? QStringLiteral("Dragging")
+                : QStringLiteral("Dragging: %1").arg(name));
+            updateDragMaskGeometry();
+            updateLayoutBadgeGeometry();
+            if (m_dragMask) {
+                m_dragMask->show();
+                m_dragMask->raise();
+            }
+            m_layoutBadge->show();
+            m_layoutBadge->raise();
+        } else {
+            m_layoutBadge->hide();
+            if (m_dragMask) {
+                m_dragMask->hide();
+            }
+        }
+    }
+}
+
+void VideoPlayerWidget::setDropTargetActive(bool active)
+{
+    m_dropTargetActive = active;
+    setProperty("dropTarget", active);
+    style()->unpolish(this);
+    style()->polish(this);
+}
+
+void VideoPlayerWidget::refreshOverlayParent()
+{
+    QWidget *host = window();
+    if (!host) {
+        return;
+    }
+
+    if (m_overlayHost && m_overlayHost != host) {
+        m_overlayHost->removeEventFilter(this);
+    }
+
+    m_overlayHost = host;
+    if (m_controls && m_controls->parentWidget() != host) {
+        m_controls->setParent(host, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+        m_controls->setAttribute(Qt::WA_ShowWithoutActivating, true);
+        m_controls->installEventFilter(this);
+    }
+    if (m_volumePopup && m_volumePopup->parentWidget() != host) {
+        m_volumePopup->setParent(host, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+        m_volumePopup->setAttribute(Qt::WA_ShowWithoutActivating, true);
+        m_volumePopup->installEventFilter(this);
+    }
+    if (m_layoutBadge && m_layoutBadge->parentWidget() != host) {
+        m_layoutBadge->setParent(host, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+        m_layoutBadge->setAttribute(Qt::WA_ShowWithoutActivating, true);
+        m_layoutBadge->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    }
+    if (m_dragMask && m_dragMask->parentWidget() != host) {
+        m_dragMask->setParent(host, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+        m_dragMask->setAttribute(Qt::WA_ShowWithoutActivating, true);
+        m_dragMask->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    }
+
+    m_overlayHost->installEventFilter(this);
+    updateControlsGeometry();
+    updateDragMaskGeometry();
+    updateLayoutBadgeGeometry();
+}
+
 bool VideoPlayerWidget::eventFilter(QObject *watched, QEvent *event)
 {
+    if (m_layoutEditMode) {
+        return QWidget::eventFilter(watched, event);
+    }
+
     if (watched == m_videoWidget
         || watched == m_controls
         || watched == m_volumePopup
@@ -87,7 +183,7 @@ bool VideoPlayerWidget::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
-    if (watched == window() && (event->type() == QEvent::Move || event->type() == QEvent::Resize || event->type() == QEvent::Show)) {
+    if (watched == m_overlayHost && (event->type() == QEvent::Move || event->type() == QEvent::Resize || event->type() == QEvent::Show)) {
         updateControlsGeometry();
     }
 
@@ -98,6 +194,8 @@ void VideoPlayerWidget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     updateControlsGeometry();
+    updateDragMaskGeometry();
+    updateLayoutBadgeGeometry();
 }
 
 void VideoPlayerWidget::onDurationChanged(qint64 duration)
@@ -212,6 +310,9 @@ void VideoPlayerWidget::setupUi()
     setObjectName(QStringLiteral("videoPlayerRoot"));
     setStyleSheet(QStringLiteral(
         "#videoPlayerRoot { background: #111111; }"
+        "#videoPlayerRoot[layoutEdit=\"true\"] { border: 2px solid rgba(255,255,255,140); }"
+        "#videoPlayerRoot[layoutDragging=\"true\"] { border: 3px solid #ffb020; background: #1f1a10; }"
+        "#videoPlayerRoot[dropTarget=\"true\"] { border: 2px solid #4da3ff; }"
         "QWidget#controls { background: rgba(25, 25, 25, 180); border-radius: 8px; }"
         "QWidget#volumePopup { background: rgba(25, 25, 25, 220); border-radius: 8px; }"
         "QPushButton, QLabel { color: white; font-family: 'Microsoft YaHei'; }"
@@ -236,7 +337,37 @@ void VideoPlayerWidget::setupUi()
     m_videoWidget->installEventFilter(this);
     layout->addWidget(m_videoWidget);
 
-    m_controls = new QWidget(window(), Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_errorLabel = new QLabel(this);
+    m_errorLabel->setAlignment(Qt::AlignCenter);
+    m_errorLabel->setWordWrap(true);
+    m_errorLabel->setStyleSheet(QStringLiteral(
+        "QLabel { color: #ff6b6b; background: rgba(0,0,0,180); "
+        "border-radius: 6px; padding: 8px 12px; font-family: 'Microsoft YaHei'; }"));
+    m_errorLabel->hide();
+
+    m_dragMask = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_dragMask->setObjectName(QStringLiteral("dragMask"));
+    m_dragMask->setAttribute(Qt::WA_ShowWithoutActivating, true);
+    m_dragMask->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_dragMask->setAttribute(Qt::WA_TranslucentBackground, true);
+    m_dragMask->setWindowOpacity(0.55);
+    m_dragMask->setStyleSheet(QStringLiteral(
+        "QWidget#dragMask { background: rgba(80, 80, 80, 115); "
+        "border: 2px solid rgba(255,255,255,130); }"));
+    m_dragMask->hide();
+
+    m_layoutBadge = new QLabel(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_layoutBadge->setObjectName(QStringLiteral("layoutBadge"));
+    m_layoutBadge->setAlignment(Qt::AlignCenter);
+    m_layoutBadge->setAttribute(Qt::WA_ShowWithoutActivating, true);
+    m_layoutBadge->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    m_layoutBadge->setStyleSheet(QStringLiteral(
+        "QLabel#layoutBadge { color: #111111; background: #ffb020; "
+        "border-radius: 4px; padding: 4px 8px; font-size: 12px; "
+        "font-family: 'Microsoft YaHei'; font-weight: 600; }"));
+    m_layoutBadge->hide();
+
+    m_controls = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
     m_controls->setObjectName(QStringLiteral("controls"));
     m_controls->setMouseTracking(true);
     m_controls->installEventFilter(this);
@@ -283,7 +414,7 @@ void VideoPlayerWidget::setupUi()
     controlsLayout->addWidget(m_fullWindowButton);
     controlsLayout->addWidget(m_fullScreenButton);
 
-    m_volumePopup = new QWidget(window(), Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_volumePopup = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
     m_volumePopup->setObjectName(QStringLiteral("volumePopup"));
     m_volumePopup->setAttribute(Qt::WA_ShowWithoutActivating, true);
     m_volumePopup->setMouseTracking(true);
@@ -311,10 +442,10 @@ void VideoPlayerWidget::setupUi()
     connect(m_fullScreenButton, &QPushButton::clicked, this, &VideoPlayerWidget::toggleFullScreen);
 
     m_controlsGuardTimer = new QTimer(this);
-    m_controlsGuardTimer->setInterval(80);
+    m_controlsGuardTimer->setInterval(2500);
     connect(m_controlsGuardTimer, &QTimer::timeout, this, &VideoPlayerWidget::refreshControlsVisibility);
 
-    window()->installEventFilter(this);
+    refreshOverlayParent();
 
     updateControlsGeometry();
     setControlsVisible(false);
@@ -360,6 +491,7 @@ void VideoPlayerWidget::updateControlsGeometry()
     m_controls->setGeometry(topLeft.x(), topLeft.y(), controlsWidth, controlsHeight);
     m_controls->raise();
     updateVolumePopupGeometry();
+    updateErrorLabelGeometry();
 }
 
 void VideoPlayerWidget::updateVolumePopupGeometry()
@@ -375,6 +507,56 @@ void VideoPlayerWidget::updateVolumePopupGeometry()
     m_volumePopup->setGeometry(x, y, popupSize.width(), popupSize.height());
     if (m_volumePopup->isVisible()) {
         m_volumePopup->raise();
+    }
+}
+
+void VideoPlayerWidget::updateErrorLabelGeometry()
+{
+    if (!m_errorLabel || !m_videoWidget) {
+        return;
+    }
+    const int w = qMin(m_videoWidget->width() - 32, 400);
+    const int h = 56;
+    const int x = (m_videoWidget->width() - w) / 2;
+    const int y = (m_videoWidget->height() - h) / 2;
+    m_errorLabel->setGeometry(x, y, w, h);
+    if (m_errorLabel->isVisible()) {
+        m_errorLabel->raise();
+    }
+}
+
+void VideoPlayerWidget::updateLayoutBadgeGeometry()
+{
+    if (!m_layoutBadge) {
+        return;
+    }
+
+    const int margin = 10;
+    const int maxWidth = qMax(120, width() - margin * 2);
+    m_layoutBadge->setMaximumWidth(maxWidth);
+    const QSize badgeSize = m_layoutBadge->sizeHint().boundedTo(QSize(maxWidth, 28));
+    const QPoint topLeft = mapToGlobal(QPoint(margin, margin));
+    m_layoutBadge->setGeometry(topLeft.x(), topLeft.y(), badgeSize.width(), badgeSize.height());
+}
+
+void VideoPlayerWidget::updateDragMaskGeometry()
+{
+    if (!m_dragMask) {
+        return;
+    }
+
+    const QPoint topLeft = mapToGlobal(QPoint(0, 0));
+    m_dragMask->setGeometry(topLeft.x(), topLeft.y(), width(), height());
+}
+
+void VideoPlayerWidget::onPlayerError(QMediaPlayer::Error error, const QString &errorString)
+{
+    Q_UNUSED(error);
+    if (m_errorLabel) {
+        m_errorLabel->setText(QStringLiteral("播放错误: %1").arg(errorString));
+        updateErrorLabelGeometry();
+        m_errorLabel->show();
+        m_errorLabel->raise();
     }
 }
 

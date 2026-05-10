@@ -21,6 +21,10 @@ public:
     void stop();
     void setFullWindowActive(bool active);
     void setFullScreenActive(bool active);
+    void setLayoutEditMode(bool active);
+    void setLayoutDragActive(bool active);
+    void setDropTargetActive(bool active);
+    void refreshOverlayParent();
 
 signals:
     void requestToggleFullWindow(VideoPlayerWidget *panel, bool enabled);
@@ -43,12 +47,16 @@ private slots:
     void toggleFullScreen();
     void toggleVolumePopup();
     void refreshControlsVisibility();
+    void onPlayerError(QMediaPlayer::Error error, const QString &errorString);
 
 private:
     void setupUi();
     void updateUi();
     void updateControlsGeometry();
     void updateVolumePopupGeometry();
+    void updateErrorLabelGeometry();
+    void updateLayoutBadgeGeometry();
+    void updateDragMaskGeometry();
     void setControlsVisible(bool visible);
     bool shouldKeepControlsVisible() const;
     void seekTo(qint64 positionMs);
@@ -71,11 +79,18 @@ private:
     ClickableSlider *m_slider = nullptr;
     QWidget *m_volumePopup = nullptr;
     ClickableSlider *m_volumeSlider = nullptr;
+    QLabel *m_errorLabel = nullptr;
+    QLabel *m_layoutBadge = nullptr;
+    QWidget *m_dragMask = nullptr;
     QTimer *m_controlsGuardTimer = nullptr;
+    QWidget *m_overlayHost = nullptr;
     bool m_sliderDragging = false;
     bool m_ignoreSectionCheck = false;
     int m_currentSection = -1;
     qint64 m_durationMs = 0;
     bool m_fullWindowActive = false;
     bool m_fullScreenActive = false;
+    bool m_layoutEditMode = false;
+    bool m_layoutDragActive = false;
+    bool m_dropTargetActive = false;
 };

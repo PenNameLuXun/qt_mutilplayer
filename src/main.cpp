@@ -30,8 +30,7 @@ int main(int argc, char *argv[])
     QCommandLineOption configOption(
         QStringList() << QStringLiteral("f") << QStringLiteral("file"),
         QStringLiteral("Path to config JSON."),
-        QStringLiteral("file"),
-        QStringLiteral("C:/Users/groot/Documents/project/mutilplayer/config_local.json"));
+        QStringLiteral("file"));
     parser.addOption(configOption);
 
     QCommandLineOption testModeOption(
@@ -53,7 +52,9 @@ int main(int argc, char *argv[])
 
     parser.process(app);
 
-    const QString configPath = QFileInfo(parser.value(configOption)).absoluteFilePath();
+    const QString configPath = parser.isSet(configOption)
+        ? QFileInfo(parser.value(configOption)).absoluteFilePath()
+        : QCoreApplication::applicationDirPath() + QStringLiteral("/config.json");
     AppConfig config;
     QString errorMessage;
     if (!loadAppConfig(configPath, config, &errorMessage)) {
